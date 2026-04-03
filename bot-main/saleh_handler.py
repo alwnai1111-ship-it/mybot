@@ -2017,7 +2017,6 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
                 "parse_mode": "MarkDown",
                 "disable_web_page_preview": True,
                 "reply_markup": json.dumps({"inline_keyboard": [
-                    [{"text": "📋 الكروبات المرتبطة", "callback_data": "listgroup"}],
                     [{"text": "رجوع", "callback_data": "back"}],
                 ]}),
             })

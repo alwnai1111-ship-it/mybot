@@ -2035,7 +2035,7 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
                         {"text": str(grp_id), "callback_data": "0"},
                         {"text": "🗑 حذف", "callback_data": "dllgrp@" + str(grp_id)},
                     ])
-                keyboard["inline_keyboard"].append([{"text": "• رجوع •", "callback_data": "toch"}])
+                keyboard["inline_keyboard"].append([{"text": "• رجوع •", "callback_data": "back"}])
                 await _bot(token, "editMessageText", {
                     "chat_id": nameroch2,
                     "message_id": mnamero_id2,
@@ -2061,7 +2061,7 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
                     ),
                     "parse_mode": "MarkDown",
                     "reply_markup": json.dumps({"inline_keyboard": [
-                        [{"text": "• رجوع •", "callback_data": "toch"}],
+                        [{"text": "• رجوع •", "callback_data": "back"}],
                     ]}),
                 })
 

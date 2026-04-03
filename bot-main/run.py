@@ -20,6 +20,7 @@ from bot_helper import (
     bot_get, read_file, write_file, file_exists,
     file_lines, ensure_dir, write_json, read_json, append_file
 )
+from db_config import get_config, set_config
 from maker_handler import _run_polling as run_maker_polling
 from saleh_handler import _run_polling as run_saleh_polling
 
@@ -107,13 +108,14 @@ async def start_all_created_bots():
 
 
 def _init_files():
-    """تهيئة ملفات البيانات الأساسية"""
+    """تهيئة ملفات البيانات الأساسية + قاعدة البيانات"""
     ensure_dir("NaMero")
     ensure_dir("botmak")
     ensure_dir("from_id")
     ensure_dir("user")
     ensure_dir("NAMERO")
     ensure_dir("data")
+    ensure_dir("db")
 
     if not file_exists("NaMeroData"):
         write_json("NaMeroData", {
@@ -142,6 +144,33 @@ def _init_files():
         if not file_exists(path):
             write_json(path, {})
 
+    # ── تهيئة قاعدة البيانات بالإعدادات الافتراضية إذا لم تكن موجودة ──
+    _init_db_defaults()
+
+
+def _init_db_defaults():
+    """تعيين القيم الافتراضية في قاعدة البيانات (بديل الملفات النصية المحذوفة)"""
+    # saleh_admin: ID المشرف العام
+    if not get_config("saleh_admin"):
+        set_config("saleh_admin", str(config.DEVELOPER_ID))
+        print(f"[DB] ✅ تم تعيين saleh_admin: {config.DEVELOPER_ID}")
+
+    # userbot: يوزرنيم بوت الصانع (يُحدَّث بعد getMe الناجح)
+    if not get_config("userbot"):
+        set_config("userbot", getattr(config, "USER_BOT_NAMERO", ""))
+
+    # xx: اسم المطور
+    if not get_config("xx"):
+        set_config("xx", getattr(config, "XX", config.DEVELOPER_USERNAME))
+
+    # xxx: رابط شرح التوكن (اختياري)
+    if not get_config("xxx"):
+        set_config("xxx", getattr(config, "XXX", ""))
+
+    # base_url: غير مستخدم في polling لكن محفوظ للتوافق
+    if not get_config("base_url"):
+        set_config("base_url", getattr(config, "BASE_URL", ""))
+
 
 async def main():
     _init_files()
@@ -159,9 +188,15 @@ async def main():
         sys.exit(1)
 
     bot_info = result["result"]
-    print(f"✅ البوت: @{bot_info.get('username')} | {bot_info.get('first_name')}")
+    bot_username = bot_info.get("username", "")
+    print(f"✅ البوت: @{bot_username} | {bot_info.get('first_name')}")
     print(f"🔄 وضع Polling فقط - بدون Webhook")
     print("=" * 55)
+
+    # حفظ اسم البوت في قاعدة البيانات (يُستخدم بدلاً من ملف userbot)
+    if bot_username:
+        set_config("userbot", bot_username)
+        print(f"[DB] ✅ تم تحديث userbot: {bot_username}")
 
     # حذف أي webhook موجود على البوت الرئيسي
     dw = await bot_get(TOKEN, "deleteWebhook", {"drop_pending_updates": "false"})

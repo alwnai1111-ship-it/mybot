@@ -14,6 +14,7 @@ from bot_helper import (
     read_json, write_json, file_lines, ensure_dir, file_exists,
     delete_file, check_member, get_chat_admins_ok, extract_update_fields
 )
+from db_config import get_config
 
 # ─────────────────────────────────────────────
 # helpers
@@ -2097,10 +2098,9 @@ async def _run_polling(bot_dir: str):
 
     token    = read_file(token_path).strip()
     admin_id = read_file(admin_path).strip()
-    ds       = read_file("saleh_admin").strip()
 
-    namero_json = read_json("botmak/NAMERO", {"info": {}})
-    makerinve   = namero_json.get("info", {})
+    # ─── ds (معرف المشرف العام) من قاعدة البيانات - بدلاً من ملف saleh_admin ───
+    ds = get_config("saleh_admin", str(getattr(config, "DEVELOPER_ID", "")))
 
     if not token:
         print("[SALEH] ❌ token فارغ")
@@ -2121,6 +2121,10 @@ async def _run_polling(bot_dir: str):
 
     while True:
         try:
+            # ─── إعادة تحميل إعدادات المصنع في كل دورة (يلتقط أي تغييرات) ───
+            namero_json = read_json("botmak/NAMERO", {"info": {}})
+            makerinve   = namero_json.get("info", {})
+
             updates = await _get_updates(token, offset)
             error_count = 0
 
@@ -2128,17 +2132,15 @@ async def _run_polling(bot_dir: str):
                 offset = update["update_id"] + 1
                 try:
                     await handle_saleh(
-                        token    = token,
-                        bot_dir  = bot_dir,
-                        update   = update,
-                        admin_id = admin_id,
-                        ds       = ds,
-                        makerinve= makerinve,
+                        token     = token,
+                        bot_dir   = bot_dir,
+                        update    = update,
+                        admin_id  = admin_id,
+                        ds        = ds,
+                        makerinve = makerinve,
                     )
                 except Exception as e:
                     print(f"[{bot_name}] ❌ خطأ في التحديث {update.get('update_id')}: {e}")
-
-            # بدون sleep - معالجة فورية
 
         except asyncio.CancelledError:
             print(f"[{bot_name}] ⛔ تم إيقاف الـ Polling")
@@ -2147,10 +2149,10 @@ async def _run_polling(bot_dir: str):
             error_count += 1
             print(f"[{bot_name}] ❌ خطأ ({error_count}/{_MAX_ERRORS}): {e}")
             if error_count >= _MAX_ERRORS:
-                await asyncio.sleep(1)  # تقليل التأخير
+                await asyncio.sleep(1)
                 error_count = 0
             else:
-                await asyncio.sleep(0.5)  # تأخير أقصر
+                await asyncio.sleep(0.5)
 
 
 async def _main():

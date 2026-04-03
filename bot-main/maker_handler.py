@@ -14,16 +14,35 @@ from bot_helper import (
     delete_file, check_member, get_chat_admins_ok, extract_update_fields
 )
 from saleh_handler import _run_polling as _run_saleh_polling
+from db_config import get_config, set_config
 
-TOKEN = read_file("token").strip()
-USER_BOT_NAMERO = read_file("userbot").strip()
-XX = read_file("xx").strip()
-XXX = read_file("xxx").strip()
-SALEH_ADMIN = read_file("saleh_admin").strip()
-NAMERO_ADMINS_RAW = read_file("namero_admins").strip()
-NAMERO_ADMINS = [x.strip() for x in NAMERO_ADMINS_RAW.split("\n") if x.strip()]
-BASE_URL = read_file("base_url").strip()
-UPDATE_CHANNEL = ""
+# ══════════════════════════════════════════════════════════════════════════════
+# الإعدادات من قاعدة البيانات (بديل ملفات النص المحذوفة)
+# userbot, xx, xxx, saleh_admin, base_url ← تُقرأ من SQLite مع fallback لـ config.py
+# ══════════════════════════════════════════════════════════════════════════════
+
+TOKEN = config.TOKEN
+
+def _load_namero_admins() -> list:
+    """تحميل قائمة الأدمنية من config.py + ملف namero_admins إن وُجد"""
+    admins = set(str(x) for x in config.ADMIN_IDS if x)
+    # دعم ملف namero_admins القديم للتوافق مع البيانات الموجودة
+    raw = read_file("namero_admins", "").strip()
+    if raw:
+        for line in raw.split("\n"):
+            line = line.strip()
+            if line and line.isdigit():
+                admins.add(line)
+    return list(admins)
+
+
+USER_BOT_NAMERO = get_config("userbot", getattr(config, "USER_BOT_NAMERO", ""))
+XX              = get_config("xx",      getattr(config, "XX",              config.DEVELOPER_USERNAME))
+XXX             = get_config("xxx",     getattr(config, "XXX",             ""))
+SALEH_ADMIN     = get_config("saleh_admin", str(config.DEVELOPER_ID))
+BASE_URL        = get_config("base_url",    getattr(config, "BASE_URL",    ""))
+NAMERO_ADMINS   = _load_namero_admins()
+UPDATE_CHANNEL  = ""
 
 BOTS_LIST = {
     1: "صانع بوتات ",
@@ -42,15 +61,15 @@ BOTS_LIST = {
 }
 
 def reload_config():
+    """إعادة تحميل الإعدادات من قاعدة البيانات وconfig.py"""
     global TOKEN, USER_BOT_NAMERO, XX, XXX, SALEH_ADMIN, NAMERO_ADMINS, BASE_URL, UPDATE_CHANNEL
-    TOKEN = read_file("token").strip()
-    USER_BOT_NAMERO = read_file("userbot").strip()
-    XX = read_file("xx").strip()
-    XXX = read_file("xxx").strip()
-    SALEH_ADMIN = read_file("saleh_admin").strip()
-    NAMERO_ADMINS_RAW = read_file("namero_admins").strip()
-    NAMERO_ADMINS = [x.strip() for x in NAMERO_ADMINS_RAW.split("\n") if x.strip()]
-    BASE_URL = read_file("base_url").strip()
+    TOKEN           = config.TOKEN
+    USER_BOT_NAMERO = get_config("userbot",     getattr(config, "USER_BOT_NAMERO", ""))
+    XX              = get_config("xx",          getattr(config, "XX",              config.DEVELOPER_USERNAME))
+    XXX             = get_config("xxx",         getattr(config, "XXX",             ""))
+    SALEH_ADMIN     = get_config("saleh_admin", str(config.DEVELOPER_ID))
+    BASE_URL        = get_config("base_url",    getattr(config, "BASE_URL",        ""))
+    NAMERO_ADMINS   = _load_namero_admins()
 
 def get_token():
     return TOKEN
@@ -1618,14 +1637,36 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                 if not file_exists(f"botmak/{idbot}/zune"):
                     write_json(f"botmak/{idbot}/zune", {"sudo": str(from_id)})
 
-                xx_val = read_file("xx").strip()
-                xxx_val = read_file("xxx").strip()
+                xx_val  = XX or config.DEVELOPER_USERNAME
+                xxx_val = XXX or f"https://t.me/{xx_val}"
 
-                await bot_call(token, "editMessageText", {"chat_id": chat_id, "message_id": processing_msg_id, "text": f"✅ تم إنشاء بوت *{s_p_p1_val}* الخاص بك\n• معرف البوت *:@{userbot}*\n\n[• مطور الملف 🤖](https://t.me/{xx_val})\n", "parse_mode": "markdown", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [
+                # بناء الأزرار - لا نضيف زر الشرح إذا كان الرابط فارغاً
+                success_keyboard = [
                     [{"text": "دخول الى البوت", "url": f"https://t.me/{userbot}?start"}],
-                    [{"text": "شرح تغير اسم البوت أو صوره", "url": xxx_val}],
-                    [{"text": " • رجوع • ", "callback_data": "freebot"}],
-                ]})})
+                ]
+                if xxx_val:
+                    success_keyboard.append([{"text": "شرح تغير اسم البوت أو صوره", "url": xxx_val}])
+                success_keyboard.append([{"text": " • رجوع • ", "callback_data": "freebot"}])
+
+                success_text = (
+                    f"✅ تم إنشاء بوت *{s_p_p1_val}* الخاص بك\n"
+                    f"• معرف البوت *:@{userbot}*\n\n"
+                    f"[• مطور الملف 🤖](https://t.me/{xx_val})\n"
+                )
+
+                edit_res = await bot_call(token, "editMessageText", {
+                    "chat_id": chat_id, "message_id": processing_msg_id,
+                    "text": success_text, "parse_mode": "markdown",
+                    "disable_web_page_preview": "true",
+                    "reply_markup": json.dumps({"inline_keyboard": success_keyboard}),
+                })
+                # إذا فشل الـ edit، أرسل رسالة جديدة للتأكيد
+                if not edit_res.get("ok"):
+                    await bot_call(token, "sendMessage", {
+                        "chat_id": chat_id, "text": success_text,
+                        "parse_mode": "markdown", "disable_web_page_preview": "true",
+                        "reply_markup": json.dumps({"inline_keyboard": success_keyboard}),
+                    })
 
                 saleh_id = get_saleh_admin()
                 infoidbots_new = file_lines("infoidbots")
@@ -1744,7 +1785,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             code_json_data["info"] = {}
         code_json_data["info"][code] = {"st": "yes", "idbot": idbots_tr, "userbot": userbot_tr2, "admin": str(id_tr)}
         write_json("code", code_json_data)
-        maker_bot = read_file("userbot").strip()
+        maker_bot = USER_BOT_NAMERO
         await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": f"\n• رابط النقل : https://t.me/{maker_bot}?start={code}\n• أرسله إلى الشخص المراد نقل البوت إليه .\n", "parse_mode": "markdown", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [[{"text": " • رجوع •", "callback_data": "botsmember"}]]})})
         return {"ok": True}
 
@@ -1936,9 +1977,9 @@ async def _get_updates(token: str, offset: int) -> list:
 
 
 async def _run_polling():
-    token = read_file("token").strip()
+    token = config.TOKEN.strip()
     if not token:
-        print("[Maker] ❌ token فارغ أو غير موجود")
+        print("[Maker] ❌ token فارغ أو غير موجود في config.py")
         return
 
     print("=" * 55)

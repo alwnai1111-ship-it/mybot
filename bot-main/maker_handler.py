@@ -13,6 +13,7 @@ from bot_helper import (
     read_json, write_json, file_lines, ensure_dir, file_exists,
     delete_file, check_member, get_chat_admins_ok, extract_update_fields
 )
+from saleh_handler import _run_polling as _run_saleh_polling
 
 TOKEN = read_file("token").strip()
 USER_BOT_NAMERO = read_file("userbot").strip()
@@ -82,7 +83,7 @@ def remove_dir(path: str):
 
 async def send_namero_async(token, chat_id, message_id):
     """لوحة تحكم المصنع الرئيسية - sendNAMERO من PHP"""
-    info = read_json("NaMero", {})
+    info = read_json("NaMeroData", {})
     updatenew = info.get("info", {}).get("update", "✅")
     fwrmember = info.get("info", {}).get("fwrmember", "❌")
     tnbih = info.get("info", {}).get("tnbih", "✅")
@@ -117,7 +118,7 @@ async def send_NAMERO_maker_async(token, chat_id, message_id):
     """لوحة تحكم الصانع - send_NAMERO من PHP"""
     namero_x = read_json("botmak/NAMERO", {})
     st_ch_bots = namero_x.get("info", {}).get("st_ch_bots", "❌")
-    info = read_json("NaMero", {})
+    info = read_json("NaMeroData", {})
     propots = info.get("info", {}).get("propots", "مجانية")
 
     await bot_call(token, "editMessageText", {
@@ -140,7 +141,7 @@ async def send_NAMERO_maker_async(token, chat_id, message_id):
 
 async def send_NNNAMERO_async(token, chat_id, message_id):
     """لوحة تحكم الاشتراك الاجباري - sendNNAMERO من PHP"""
-    info = read_json("NaMero", {})
+    info = read_json("NaMeroData", {})
     silk = info.get("info", {}).get("silk", "✅")
     await bot_call(token, "editMessageText", {
         "chat_id": chat_id,
@@ -214,14 +215,14 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
     link_ch_namero = namero_x.get("info", {}).get("link_channel", "")
     user_bot_namero = namero_x.get("info", {}).get("user_bot", USER_BOT_NAMERO)
 
-    info_namero = read_json("NaMero", {})
+    info_namero = read_json("NaMeroData", {})
     if not info_namero.get("info"):
         info_namero["info"] = {
             "update": "✅", "propots": "مجانية", "fwrmember": "❌",
             "tnbih": "✅", "silk": "✅", "allch": "error",
             "klish_sil": "• عزرا عزيزي عليك الاشتراك في قناه مصنع المبرمج ناميرو لتتمكن من فتح البوت 🪢\n\n🌴- اشترك ثم ارسل /start"
         }
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
 
     updatenew = info_namero.get("info", {}).get("update", "✅")
     propots = info_namero.get("info", {}).get("propots", "مجانية")
@@ -404,9 +405,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
     # --- home ---
     if data == "home" and is_admin_or_sudo:
         await bot_call(token, "answerCallbackQuery", {"callback_query_id": cb.get("id", "") if cb else "", "text": "✓"})
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "null"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_namero_async(token, chat_id, message_id)
         return {"ok": True}
 
@@ -429,54 +430,54 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     # --- تبديل عمل البوت (updatenew) ---
     if data == "updatenew" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         join = info_namero.get("info", {}).get("update", "✅")
         info_namero["info"]["update"] = "❌" if join == "✅" else "✅"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_namero_async(token, chat_id, message_id)
         return {"ok": True}
 
     # --- تبديل اشعارات الدخول (tnbih) ---
     if data == "tnbih" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         join = info_namero.get("info", {}).get("tnbih", "✅")
         info_namero["info"]["tnbih"] = "❌" if join == "✅" else "✅"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_namero_async(token, chat_id, message_id)
         return {"ok": True}
 
     # --- تبديل توجيه الرسائل (fwrmember) ---
     if data == "fwrmember" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         fw = info_namero.get("info", {}).get("fwrmember", "❌")
         info_namero["info"]["fwrmember"] = "✅" if fw == "❌" else "❌"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_namero_async(token, chat_id, message_id)
         return {"ok": True}
 
     # --- تبديل ازرار الاشتراك الاجباري (silk) ---
     if data == "silk" and is_admin_or_sudo:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         skil = info_namero.get("info", {}).get("silk", "✅")
         info_namero["info"]["silk"] = "❌" if skil == "✅" else "✅"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_NNNAMERO_async(token, chat_id, message_id)
         return {"ok": True}
 
     # --- تبديل نشر الكل (allch) ---
     if data == "allch" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         allch_val = info_namero.get("info", {}).get("allch", "مجموعة")
         info_namero["info"]["allch"] = "مجموعة" if allch_val == "مفردة" else "مفردة"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_namero_async(token, chat_id, message_id)
         return {"ok": True}
 
     if data == "allchs" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         allch_val = info_namero.get("info", {}).get("allch", "مجموعة")
         info_namero["info"]["allch"] = "مجموعة" if allch_val == "مفردة" else "مفردة"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_namero_async(token, chat_id, message_id)
         return {"ok": True}
 
@@ -499,18 +500,18 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     # --- تبديل البوتات مجانية/مدفوعة (propots) ---
     if data == "propots" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         join = info_namero.get("info", {}).get("propots", "مجانية")
         info_namero["info"]["propots"] = "مدفوعة" if join == "مجانية" else "مجانية"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await send_NAMERO_maker_async(token, chat_id, message_id)
         return {"ok": True}
 
     # --- ضبط قناة التحديثات ---
     if data == "updatechannel" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "updatechannel"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسال الرابط الخاص لقناة التحديثات \n",
@@ -520,13 +521,13 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "updatechannel":
             tex = text.replace("https://t.me/joinchat/", "").replace("http://t.me/joinchat/", "")
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
             info_namero["info"]["updatechannel"] = tex
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"- ✅ تم حفظ الرابط الخاص لقناة التحديثات 📬\n----------------------------\n-الرابط : \n{text} ",
@@ -537,9 +538,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     # --- رسالة start ---
     if data == "start" and is_admin_or_sudo:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "start"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسال نص رسالة /start\n",
@@ -549,12 +550,12 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "start" and is_namero_admin:
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
             info_namero["info"]["start"] = text
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"- ✅ تم حفظ كليشة /start \n-الكليشة : \n----------------------------\n{text} ",
@@ -565,9 +566,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     # --- كليشة معلومات عن البوت ---
     if data == "info_kl" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "info_kl"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسال نص كليشة معلومات عن البوت\n",
@@ -577,12 +578,12 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "info_kl" and is_namero_admin:
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
             info_namero["info"]["info_kl"] = text
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"- ✅ تم حفظ كليشة معلومات عن البوت \n-الكليشة : \n{text} ",
@@ -593,9 +594,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     # --- كليشة ارسال التوكن ---
     if data == "token_kl" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "token_kl"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسال نص كليشة إرسال التوكن",
@@ -605,12 +606,12 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "token_kl" and is_namero_admin:
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
             info_namero["info"]["token_kl"] = text
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"- ✅ تم حفظ كليشة إرسال التوكن\n-الكليشة : \n{text} ",
@@ -621,9 +622,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     # --- كليشة الاشتراك الاجباري ---
     if data == "klish_sil" and is_admin_or_sudo:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "klish_sil"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسال كليشة الاشتراك الاجباريي \n",
@@ -633,12 +634,12 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "klish_sil" and is_namero_admin:
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
             info_namero["info"]["klish_sil"] = text
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"- ✅ تم حفظ كليشة الاشتراك الاجباري \n-الكليشة : \n{text} ",
@@ -649,9 +650,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     # --- تعيين المطور ---
     if data == "NaMero" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "NaMero"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسالايدي حساب المطور ",
@@ -661,12 +662,12 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "NaMero" and is_namero_admin:
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
             info_namero["info"]["NaMero"] = text
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"- ✅ تم حفظ حساب المطور\n-الحساب : \n{text} ",
@@ -680,9 +681,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
     # =============================================================
 
     if data == "ban" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "ban"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسال أيدي العضو لحظره",
@@ -693,7 +694,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg and text.isdigit() and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "ban":
             ban_list = [x for x in read_file("NaMero/ban").split("\n") if x]
             if text not in ban_list:
@@ -712,15 +713,15 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     "disable_web_page_preview": "true",
                     "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- • رجوع •", "callback_data": "home"}]]})
                 })
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
     if data == "unban" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "unban"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- قم بارسال أيدي العضو للإلغاء الحظر عنه",
@@ -731,7 +732,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg and text.isdigit() and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "unban":
             ban_list = [x for x in read_file("NaMero/ban").split("\n") if x]
             if text in ban_list:
@@ -751,9 +752,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     "disable_web_page_preview": "true",
                     "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- • رجوع •", "callback_data": "home"}]]})
                 })
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
     if data == "unbanall" and is_namero_admin:
@@ -778,9 +779,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
     # =============================================================
 
     if data == "delprobot" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "delprobot"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "ℹ حذف اشتراك مدفوع : \nقم بارسال معرف البوت المصنوع الذي تود حذف❌ الاشتراك المدفوع له",
@@ -790,7 +791,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "delprobot":
             us_bo = text.replace("@", "")
             if file_exists(f"user/{us_bo}"):
@@ -834,9 +835,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     "disable_web_page_preview": "true",
                     "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- معاودة المحاولة", "callback_data": "delprobot"}]]})
                 })
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
     if data and data.startswith("delprobotyes ") and is_namero_admin:
@@ -870,9 +871,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if data == "addprobot" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "addprobot"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- ارسل الآن يوزر البوت (بدون @) لإضافته في نظام الاشتراك المدفوع",
@@ -881,7 +882,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if text and text != "/start" and not data and msg and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "addprobot":
             us_bo = text.replace("@", "")
             if file_exists(f"user/{us_bo}"):
@@ -921,9 +922,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     "disable_web_page_preview": "true",
                     "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- معاودة المحاولة", "callback_data": "addprobot"}]]})
                 })
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
     if data and data.startswith("probotyes ") and is_namero_admin:
@@ -982,9 +983,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
     # =============================================================
 
     if data == "channelbots" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "channelbots"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- حسنًا عزيزي المدير، قم بإعادة توجيه منشور من القناة التي تريد جعلها قناة الاشتراك الإجباري في كل البوتات المصنوعة",
@@ -994,13 +995,13 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if forward_from_chat and msg and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "channelbots":
             id_channel_cb = forward_from_chat.get("id")
             if id_channel_cb:
                 ok_cb = await get_chat_admins_ok(token, str(id_channel_cb))
                 namero_x_cb = read_json("botmak/NAMERO", {})
-                info_namero_cb = read_json("NaMero", {})
+                info_namero_cb = read_json("NaMeroData", {})
                 if ok_cb:
                     result_cb = await bot_get(token, "getChat", {"chat_id": id_channel_cb})
                     namechannel_cb = result_cb.get("result", {}).get("title", "") if result_cb.get("ok") else ""
@@ -1008,7 +1009,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     namero_x_cb["info"]["name_channel"] = namechannel_cb
                     write_json("botmak/NAMERO", namero_x_cb)
                     info_namero_cb["info"]["amr"] = "channel_idlink"
-                    write_json("NaMero", info_namero_cb)
+                    write_json("NaMeroData", info_namero_cb)
                     await bot_call(token, "sendMessage", {
                         "chat_id": chat_id,
                         "text": f"✅ تم إضافة القناة بنجاح عزيزي الأدمن \n\nℹ️ معلومات القناة:\n• user : قناة خاصة\n• name : {namechannel_cb}\n• id : {id_channel_cb}\n\nالآن يجب عليك إرسال رابط القناة الخاص 👇",
@@ -1016,7 +1017,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     })
                 else:
                     info_namero_cb["info"]["amr"] = "null"
-                    write_json("NaMero", info_namero_cb)
+                    write_json("NaMeroData", info_namero_cb)
                     await bot_call(token, "sendMessage", {
                         "chat_id": chat_id,
                         "text": "❌ البوت ليس أدمن في القناة \n- قم برفع البوت أولًا لكي تتمكن من إضافتها",
@@ -1025,16 +1026,16 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             return {"ok": True}
 
     if text and text != "/start" and not data and msg and not forward_from_chat and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "channel_idlink":
             tex = text.replace("https://t.me/joinchat/", "").replace("http://t.me/joinchat/", "")
             namero_x_cl = read_json("botmak/NAMERO", {})
             namero_x_cl["info"]["st_ch_bots"] = "✅"
             namero_x_cl["info"]["link_channel"] = tex
             write_json("botmak/NAMERO", namero_x_cl)
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"✅ تم إضافة القناة بنجاح عزيزي الأدمن ناميرو \n\n• رابط : {text} \n• مختصر : {tex}",
@@ -1043,9 +1044,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             return {"ok": True}
 
     if data == "channelbots2" and is_namero_admin:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "channelbots2"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {
             "chat_id": chat_id, "message_id": message_id,
             "text": "- حسننا عزيزي المدير قم بإعادة توجية منشور من القناة2 التي تريد جعلها قناة الاشتراك الاجباري في كل البوتات المصنوعة\n",
@@ -1055,13 +1056,13 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if forward_from_chat and msg and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "channelbots2":
             id_channel_cb2 = forward_from_chat.get("id")
             if id_channel_cb2:
                 ok_cb2 = await get_chat_admins_ok(token, str(id_channel_cb2))
                 namero_x_cb2 = read_json("botmak/NAMERO", {})
-                info_namero_cb2 = read_json("NaMero", {})
+                info_namero_cb2 = read_json("NaMeroData", {})
                 if ok_cb2:
                     result_cb2 = await bot_get(token, "getChat", {"chat_id": id_channel_cb2})
                     namechannel_cb2 = result_cb2.get("result", {}).get("title", "") if result_cb2.get("ok") else ""
@@ -1069,7 +1070,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     namero_x_cb2["info"]["name_channel2"] = namechannel_cb2
                     write_json("botmak/NAMERO", namero_x_cb2)
                     info_namero_cb2["info"]["amr"] = "channel_idlink2"
-                    write_json("NaMero", info_namero_cb2)
+                    write_json("NaMeroData", info_namero_cb2)
                     await bot_call(token, "sendMessage", {
                         "chat_id": chat_id,
                         "text": f"\n✅ تم إضافة القناة بنجاح عزيزي الادمن \ninfo channel \nuser : • قناة خاصة • \nname : {namechannel_cb2}\nid : {id_channel_cb2}\n*يجب عليك ارسال رابط القناة الخاص قم بارسالة الان\n ",
@@ -1077,7 +1078,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                     })
                 else:
                     info_namero_cb2["info"]["amr"] = "null"
-                    write_json("NaMero", info_namero_cb2)
+                    write_json("NaMeroData", info_namero_cb2)
                     await bot_call(token, "sendMessage", {
                         "chat_id": chat_id,
                         "text": "❌ البوت ليس ادمن في القناة \n- قم برفع البوت اولا لكي تتمكن من إضافتها \n ",
@@ -1086,16 +1087,16 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             return {"ok": True}
 
     if text and text != "/start" and not data and msg and not forward_from_chat and is_namero_admin:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "channel_idlink2":
             tex = text.replace("https://t.me/joinchat/", "").replace("http://t.me/joinchat/", "")
             namero_x_cl2 = read_json("botmak/NAMERO", {})
             namero_x_cl2["info"]["st_ch_bots"] = "✅"
             namero_x_cl2["info"]["link_channel2"] = tex
             write_json("botmak/NAMERO", namero_x_cl2)
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "sendMessage", {
                 "chat_id": chat_id,
                 "text": f"\n✅ تم إضافة القناة بنجاح عزيزي الادمن \ninfo channel \nlink : {text} \nt : {tex}\n ",
@@ -1108,19 +1109,19 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
     # =============================================================
 
     if data == "addchannel" and is_admin_or_sudo:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         channels = info_namero.get("info", {}).get("channel", {})
         count = len(channels)
         if count < 4:
             info_namero["info"]["amr"] = "addchannel"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             await bot_call(token, "editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": "- اذا كانت القناة التي تريد اضافتها عامة قم بارسال معرفها .\n* اذا كانت خاصة قم بإعادة توجية منشور من القناة إلى هنا .\n", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- الغاء", "callback_data": "home"}]]})})
         else:
             await bot_call(token, "editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": "- 🚫 لا يمكنك اضافة اكثر من3 قنوات للإشتراك الاجباري \n", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- • رجوع •", "callback_data": "home"}]]})})
         return {"ok": True}
 
     if text and text != "/start" and msg and not data:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "addchannel" and is_admin_or_sudo and not forward_from_chat:
             result = await bot_get(token, "getChat", {"chat_id": text})
             ch_id = result.get("result", {}).get("id") if result.get("ok") else None
@@ -1128,7 +1129,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                 ok = await get_chat_admins_ok(token, text)
                 if ok:
                     name_ch = result.get("result", {}).get("title", "")
-                    info_namero = read_json("NaMero", {})
+                    info_namero = read_json("NaMeroData", {})
                     if "channel" not in info_namero.get("info", {}):
                         info_namero["info"]["channel"] = {}
                     info_namero["info"]["channel"][str(ch_id)] = {"st": "عامة", "user": text, "name": name_ch}
@@ -1138,16 +1139,16 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             else:
                 await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": f"\n❌ لم تتم إضافة القناة لا توجد قناة تمتلك هذا المعرف \n{text} ", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- • رجوع • ", "callback_data": "home"}]]})})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
     if forward_from_chat and msg:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "addchannel" and is_admin_or_sudo:
             id_channel = forward_from_chat.get("id")
             if id_channel:
                 ok = await get_chat_admins_ok(token, str(id_channel))
-                info_namero = read_json("NaMero", {})
+                info_namero = read_json("NaMeroData", {})
                 if ok:
                     result = await bot_get(token, "getChat", {"chat_id": id_channel})
                     name_ch = result.get("result", {}).get("title", "")
@@ -1156,15 +1157,15 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                 else:
                     await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": "❌ البوت ليس ادمن في القناة \n- قم برفع البوت اولا لكي تتمكن من إضافتها \n ", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- إعادة المحاولة ", "callback_data": "addchannel"}]]})})
             info_namero["info"]["amr"] = "channel_id"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
-    channel_id_pending = read_json("NaMero", {}).get("info", {}).get("channel_id", "")
+    channel_id_pending = read_json("NaMeroData", {}).get("info", {}).get("channel_id", "")
     if text and text != "/start" and not data and msg and not forward_from_chat:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "channel_id" and is_admin_or_sudo:
             ok = await get_chat_admins_ok(token, str(channel_id_pending))
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             if ok:
                 result = await bot_get(token, "getChat", {"chat_id": channel_id_pending})
                 name_ch = result.get("result", {}).get("title", "")
@@ -1176,11 +1177,11 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                 await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": "❌ البوت ليس ادمن في القناة \n- قم برفع البوت اولا لكي تتمكن من إضافتها \n ", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- إعادة المحاولة ", "callback_data": "addchannel"}]]})})
             info_namero["info"]["amr"] = "null"
             info_namero["info"]["channel_id"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
     if data == "viwechannel" and is_admin_or_sudo:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         channels = info_namero.get("info", {}).get("channel", {})
         keyboard = {"inline_keyboard": []}
         for co, ch_data in channels.items():
@@ -1196,7 +1197,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if data == "delchannel" and is_admin_or_sudo:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         channels = info_namero.get("info", {}).get("channel", {})
         keyboard = {"inline_keyboard": []}
         for co, ch_data in channels.items():
@@ -1213,10 +1214,10 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
     if data and data.startswith("deletchannel "):
         nn = data.replace("deletchannel ", "").strip()
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         if "channel" in info_namero.get("info", {}):
             info_namero["info"]["channel"].pop(nn, None)
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": f"- ✅ تم حذف القناة بنجاح \n-id {nn}\n", "parse_mode": "markdown", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- • رجوع •", "callback_data": "delchannel"}]]})})
         return {"ok": True}
 
@@ -1398,7 +1399,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
     # =============================================================
 
     if data == "admins" and is_admin_or_sudo:
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         admins_arr = info_namero.get("info", {}).get("admins", [])
         keyboard = {"inline_keyboard": []}
         for i, ad in enumerate(admins_arr):
@@ -1410,16 +1411,16 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         return {"ok": True}
 
     if data == "addadmin":
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         info_namero["info"]["amr"] = "addadmin"
-        write_json("NaMero", info_namero)
+        write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": "- قم بارسال ايدي الادمن \n", "parse_mode": "markdown", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- الغاء", "callback_data": "home"}]]})})
         return {"ok": True}
 
     if text and text != "/start" and msg and not data:
-        info_namero_amr = read_json("NaMero", {}).get("info", {}).get("amr", "")
+        info_namero_amr = read_json("NaMeroData", {}).get("info", {}).get("amr", "")
         if info_namero_amr == "addadmin" and is_admin_or_sudo and text.isdigit():
-            info_namero = read_json("NaMero", {})
+            info_namero = read_json("NaMeroData", {})
             admins_arr = info_namero.get("info", {}).get("admins", [])
             if str(text) not in [str(x) for x in admins_arr]:
                 if len(admins_arr) < 6:
@@ -1432,7 +1433,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             else:
                 await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": "- ⚠ الادمن مضاف مسبقاً", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- • رجوع •", "callback_data": "admins"}]]})})
             info_namero["info"]["amr"] = "null"
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
             return {"ok": True}
 
     if data and data.startswith("deleteadmin "):
@@ -1440,12 +1441,12 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         ex = nn.split("#")
         idx = int(ex[0]) if ex[0].isdigit() else None
         ad_id = ex[1] if len(ex) > 1 else None
-        info_namero = read_json("NaMero", {})
+        info_namero = read_json("NaMeroData", {})
         admins_arr = info_namero.get("info", {}).get("admins", [])
         if idx is not None and 0 <= idx < len(admins_arr):
             admins_arr.pop(idx)
             info_namero["info"]["admins"] = admins_arr
-            write_json("NaMero", info_namero)
+            write_json("NaMeroData", info_namero)
         await bot_call(token, "editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": f"- ✅ تم حذف الادمن بنجاح \n-id {ad_id}\n", "disable_web_page_preview": "true", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "- • رجوع •", "callback_data": "admins"}]]})})
         return {"ok": True}
 
@@ -1598,15 +1599,21 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
                 if not file_exists(f"botmak/{idbot}/NaMero/ban"):
                     write_file(f"botmak/{idbot}/NaMero/ban", "")
 
-                webhook_url = f"{base_url}/botmak/{idbot}/{userbot}"
+                # Polling فقط - حذف أي Webhook موجود على البوت الفرعي
                 try:
-                    webhook_result = await bot_call(text, "setWebhook", {"url": webhook_url})
+                    await bot_get(text.strip(), "deleteWebhook", {"drop_pending_updates": "false"})
+                    print(f"[Maker] ✅ تم حذف Webhook من البوت {idbot}")
                 except Exception as e:
-                    print(f"❌ خطأ في setWebhook: {e}")
+                    print(f"[Maker] ⚠️ deleteWebhook للبوت {idbot}: {e}")
 
                 write_file(f"botmak/{idbot}/info", f"-- محمي --\n{userbot}\n{name1bot}\n{from_id}\n{idbot}\n{botmak_val}\n{s_p_p1_val}")
                 write_file(f"user/{userbot}", idbot)
-                write_file(f"NAMERO/{idbot}.py", f'tokenbot = "{text}"\n')
+                # حفظ التوكن بصيغتين: NAMERO/{idbot}.py و botmak/{idbot}/token
+                write_file(f"NAMERO/{idbot}.py", f'tokenbot = "{text.strip()}"\n')
+                write_file(f"botmak/{idbot}/token", text.strip())
+                # بدء Polling للبوت الجديد فوراً
+                asyncio.create_task(_run_saleh_polling(f"botmak/{idbot}"))
+                print(f"[Maker] 🤖 بدء Polling للبوت الجديد @{userbot} ({idbot})")
 
                 if not file_exists(f"botmak/{idbot}/zune"):
                     write_json(f"botmak/{idbot}/zune", {"sudo": str(from_id)})

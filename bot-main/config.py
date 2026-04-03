@@ -3,7 +3,6 @@ Central Configuration File - ملف التكوين المركزي
 جميع الإعدادات الأساسية في مكان واحد
 """
 
-import os
 from pathlib import Path
 
 # ============ المسارات ============
@@ -20,7 +19,7 @@ CACHE_DIR.mkdir(exist_ok=True)
 DATABASE_PATH = str(DB_DIR / "bot_data.db")
 
 # ============ بيانات الاعتماد ============
-TOKEN = os.environ.get("BOT_TOKEN", "")
+TOKEN = "5892582536:AAGnc7hxSfEque9vSKK5BueykFDYFhFnoaY"
 DEVELOPER_ID = 1116907157
 DEVELOPER_USERNAME = "namero"
 ADMIN_IDS = [1116907157, 123456789, 987654321]

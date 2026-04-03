@@ -349,37 +349,6 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
         await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": "❌ لا تستطيع استخدام البوت انت محظور ❌"})
         return {"ok": True}
 
-    # --- فلاتر الأمان على النص (مطابقة PHP) ---
-    _BLOCKED_PATTERNS = [
-        r'decode', r'encode', r'base64', r'base64_decode',
-        r';', r'//', r"'", r'"', r',', r'\)', r'\(', r'\}', r'\{',
-        r'\]', r'\[', r'file_get_contents', r'github',
-        r'https', r'http',
-    ]
-    _BLOCKED_LINK_PATTERN = re.compile(
-        r'(http|https|t\.me|telegram\.me)', re.IGNORECASE
-    )
-    _BLOCKED_AT_PATTERN = re.compile(r'@|#')
-
-    if text and msg and not is_namero_admin:
-        blocked = False
-        for pat in _BLOCKED_PATTERNS:
-            try:
-                if re.search(pat, text, re.IGNORECASE):
-                    blocked = True
-                    break
-            except:
-                pass
-        if not blocked and _BLOCKED_LINK_PATTERN.search(text):
-            await bot_call(token, "deleteMessage", {"chat_id": chat_id, "message_id": message_id})
-            blocked = True
-        if not blocked and _BLOCKED_AT_PATTERN.search(text):
-            await bot_call(token, "deleteMessage", {"chat_id": chat_id, "message_id": message_id})
-            blocked = True
-        if blocked:
-            await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": "", "reply_to_message_id": message_id})
-            return {"ok": True}
-
     # --- إنشاء مجلدات المستخدم ---
     ensure_dir(f"from_id/{from_id}")
     if not file_exists(f"from_id/{from_id}/amr"):

@@ -177,11 +177,10 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
     if not isinstance(sudo_arr, list):
         sudo_arr = []
 
-    config_admins = [str(x) for x in getattr(config, "ADMIN_IDS", []) if x]
-    effective_admins = set([a for a in [admin, ds_id] + config_admins if a])
-
     def is_super_admin(user_id: str) -> bool:
-        return str(user_id) in effective_admins or str(user_id) in [str(x) for x in sudo_arr]
+        """المطور مستخدم عادي في البوتات الفرعية - فقط صاحب البوت وsudo هم الأدمنية"""
+        uid = str(user_id)
+        return uid == admin or uid in [str(x) for x in sudo_arr]
 
     # members
     all_users = file_lines(alluser_path)
@@ -414,7 +413,7 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
         zune["data"] = "chprch"
         write_json(zune_path, zune)
 
-    if saleh_text and zune.get("data") == "chprch":
+    if saleh_text and zune.get("data") == "chprch" and is_super_admin(namero_bots):
         s_all_count = s_all + s_all_gg + s_all_co
         await _bot(token, "sendMessage", {
             "chat_id": nameroch,
@@ -591,8 +590,9 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
         write_json(zune_path, zune)
 
     elif saleh_text == "/start":
-        # ── /start: admin/dev panel ───────────────────────────────────────
+        # ── /start ───────────────────────────────────────────────────────
         if is_super_admin(namero_bots):
+            # لوحة تحكم الأدمن
             await _bot(token, "sendMessage", {
                 "chat_id": nameroch,
                 "text": (
@@ -606,6 +606,31 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
                 "disable_web_page_preview": True,
                 "reply_markup": startadmin_kb,
             })
+        elif chat_type == "private":
+            # رسالة الترحيب للمستخدمين العاديين
+            wellcom_msg = zune.get("wellcom") or ""
+            if wellcom_msg:
+                send_text = (wellcom_msg
+                             .replace("#name", name)
+                             .replace("#id", namero_bots)
+                             .replace("#username", "@" + saleh_user if saleh_user else namero_bots))
+                await _bot(token, "sendMessage", {
+                    "chat_id": nameroch,
+                    "text": send_text,
+                    "parse_mode": "MarkDown",
+                    "disable_web_page_preview": True,
+                })
+            else:
+                await _bot(token, "sendMessage", {
+                    "chat_id": nameroch,
+                    "text": (
+                        f"👋 مرحباً {name}!\n\n"
+                        "أهلا بك في البوت ❤\n"
+                        "- ارسل رسالتك الان ليتم ارسالها الى مدير البوت."
+                    ),
+                    "parse_mode": "MarkDown",
+                    "disable_web_page_preview": True,
+                })
 
     elif msg and zune.get("sendad") == "✅" and zune.get("tawa") != "❌" and namero_bots != admin:
         # ── forward user message to admin ─────────────────────────────────
@@ -708,7 +733,7 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
         write_json(zune_path, zune)
 
     if re.search(r"@", saleh_text or "") and zune.get("data") == "addch2":
-        if namero_bots == admin or namero_bots in [str(x) for x in (zune.get("secondch") or [])]:
+        if namero_bots == admin or namero_bots in [str(x) for x in sudo_arr]:
             await _bot(token, "sendMessage", {
                 "chat_id": nameroch,
                 "text": "• تم الحفظ بنجاح 🎠\n",
@@ -1073,7 +1098,7 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
         zune["data"] = "mchc"
         write_json(zune_path, zune)
 
-    if saleh_text and zune.get("data") == "mchc":
+    if saleh_text and zune.get("data") == "mchc" and is_super_admin(namero_bots):
         s_all_count2 = s_all + s_all_gg + s_all_co
         await _bot(token, "sendMessage", {
             "chat_id": nameroch,
@@ -1350,31 +1375,38 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
             id_ch6 = zune.get("idch") or []
             allcou6 = s_all6 + len(id_group6) + len(id_ch6)
             con6 = len(id_ch6) + len(id_group6)
+            zune["data"] = "stop"
+            write_json(zune_path, zune)
             await _bot(token, "sendMessage", {
                 "chat_id": nameroch,
                 "text": f"• جاري الاذاعة الى ({s_all6}) مستخدم",
                 "parse_mode": "MarkDown",
                 "reply_markup": back_kb,
             })
-            max_i = max(len(all_u4), len(id_ch6), len(id_group6))
-            for i in range(max_i):
-                if i < len(all_u4):
-                    await _bot(token, "copyMessage", {"chat_id": all_u4[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-                if i < len(id_ch6):
-                    await _bot(token, "copyMessage", {"chat_id": id_ch6[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-                if i < len(id_group6):
-                    await _bot(token, "copyMessage", {"chat_id": id_group6[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-            if max_i <= 3:
-                await _bot(token, "sendMessage", {
-                    "chat_id": admin,
-                    "text": (
-                        "• تم الاذاعة بنجاح 🎉\n\n"
-                        f"• الاعضاء الذين شاهدو الاذاعه {{{s_all6}}} عضو حقيقي\n\n"
-                        f"• تم الارسال الى {{{con6}}} قنوات وكروبات"
-                    ),
-                })
-            zune["data"] = "stop"
-            write_json(zune_path, zune)
+            sent = 0
+            failed = 0
+            for uid in all_u4:
+                r = await _bot(token, "copyMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                if r.get("ok"):
+                    sent += 1
+                else:
+                    failed += 1
+                await asyncio.sleep(0.05)
+            for uid in id_ch6:
+                await _bot(token, "copyMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            for uid in id_group6:
+                await _bot(token, "copyMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            await _bot(token, "sendMessage", {
+                "chat_id": admin,
+                "text": (
+                    "• تم الاذاعة بنجاح 🎉\n\n"
+                    f"• الأعضاء الذين شاهدوا الاذاعة: {sent} عضو\n"
+                    f"• فشل الإرسال: {failed}\n"
+                    f"• القنوات والكروبات: {con6}"
+                ),
+            })
 
     # ── tallsend: forward to all users + groups + channels ────────────────
     if s_p_p1 == "tallsend":
@@ -1399,31 +1431,38 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
             id_group7 = zune.get("idgroup") or []
             id_ch7 = zune.get("idch") or []
             con7 = len(id_ch7) + len(id_group7)
+            zune["data"] = "stop"
+            write_json(zune_path, zune)
             await _bot(token, "sendMessage", {
                 "chat_id": nameroch,
                 "text": f"• جاري الاذاعة الى ({s_all7}) مستخدم",
                 "parse_mode": "MarkDown",
                 "reply_markup": back_kb,
             })
-            max_i7 = max(len(all_u7), len(id_ch7), len(id_group7))
-            for i in range(max_i7):
-                if i < len(all_u7):
-                    await _bot(token, "forwardMessage", {"chat_id": all_u7[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-                if i < len(id_ch7):
-                    await _bot(token, "forwardMessage", {"chat_id": id_ch7[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-                if i < len(id_group7):
-                    await _bot(token, "forwardMessage", {"chat_id": id_group7[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-            if max_i7 <= 3:
-                await _bot(token, "sendMessage", {
-                    "chat_id": admin,
-                    "text": (
-                        "• تم الاذاعة بنجاح 🎉\n\n"
-                        f"• الاعضاء الذين شاهدو الاذاعه {{{s_all7}}} عضو حقيقي\n\n"
-                        f"• تم الارسال الى {{{con7}}} قنوات وكروبات"
-                    ),
-                })
-            zune["data"] = "stop"
-            write_json(zune_path, zune)
+            sent7 = 0
+            failed7 = 0
+            for uid in all_u7:
+                r = await _bot(token, "forwardMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                if r.get("ok"):
+                    sent7 += 1
+                else:
+                    failed7 += 1
+                await asyncio.sleep(0.05)
+            for uid in id_ch7:
+                await _bot(token, "forwardMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            for uid in id_group7:
+                await _bot(token, "forwardMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            await _bot(token, "sendMessage", {
+                "chat_id": admin,
+                "text": (
+                    "• تم الاذاعة بنجاح 🎉\n\n"
+                    f"• الأعضاء الذين شاهدوا الاذاعة: {sent7} عضو\n"
+                    f"• فشل الإرسال: {failed7}\n"
+                    f"• القنوات والكروبات: {con7}"
+                ),
+            })
 
     # ── gsend: copy to groups+channels only ───────────────────────────────
     if s_p_p1 == "gsend":
@@ -1447,24 +1486,24 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
             id_ch8 = zune.get("idch") or []
             s_all_gg8 = len(id_group8)
             x8 = len(id_ch8) + len(id_group8)
+            zune["data"] = "stop"
+            write_json(zune_path, zune)
             await _bot(token, "sendMessage", {
                 "chat_id": nameroch,
-                "text": f"• جاري الاذاعة الى ({s_all_gg8}) مستخدم",
+                "text": f"• جاري الاذاعة الى ({s_all_gg8}) كروب/قناة",
                 "parse_mode": "MarkDown",
                 "reply_markup": back_kb,
             })
-            for i in range(max(len(id_group8), len(id_ch8))):
-                if i < len(id_ch8):
-                    await _bot(token, "copyMessage", {"chat_id": id_ch8[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-                if i < len(id_group8):
-                    await _bot(token, "copyMessage", {"chat_id": id_group8[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-            if len(id_group8) <= 2:
-                await _bot(token, "sendMessage", {
-                    "chat_id": admin,
-                    "text": f"• تم الاذاعة بنجاح 🎉\n\n• القنوات والكروبات الذين شاهدو الاذاعة {x8}",
-                })
-            zune["data"] = "stop"
-            write_json(zune_path, zune)
+            for uid in id_ch8:
+                await _bot(token, "copyMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            for uid in id_group8:
+                await _bot(token, "copyMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            await _bot(token, "sendMessage", {
+                "chat_id": admin,
+                "text": f"• تم الاذاعة بنجاح 🎉\n\n• القنوات والكروبات الذين شاهدو الاذاعة: {x8}",
+            })
 
     # ── tgsend: forward to groups+channels only ───────────────────────────
     if s_p_p1 == "tgsend":
@@ -1488,24 +1527,24 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
             id_ch9 = zune.get("idch") or []
             s_all_gg9 = len(id_group9)
             x9 = len(id_ch9) + len(id_group9)
+            zune["data"] = "stop"
+            write_json(zune_path, zune)
             await _bot(token, "sendMessage", {
                 "chat_id": nameroch,
-                "text": f"• جاري الاذاعة الى ({s_all_gg9}) مستخدم",
+                "text": f"• جاري الاذاعة الى ({s_all_gg9}) كروب/قناة",
                 "parse_mode": "MarkDown",
                 "reply_markup": back_kb,
             })
-            for i in range(max(len(id_group9), len(id_ch9))):
-                if i < len(id_group9):
-                    await _bot(token, "forwardMessage", {"chat_id": id_group9[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-                if i < len(id_ch9):
-                    await _bot(token, "forwardMessage", {"chat_id": id_ch9[i], "from_chat_id": namero_bots, "message_id": mnamero_id})
-            if len(id_group9) <= 2:
-                await _bot(token, "sendMessage", {
-                    "chat_id": admin,
-                    "text": f"• تم الاذاعة بنجاح 🎉\n\n• القنوات والكروبات الذين شاهدو الاذاعة {x9}",
-                })
-            zune["data"] = "stop"
-            write_json(zune_path, zune)
+            for uid in id_ch9:
+                await _bot(token, "forwardMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            for uid in id_group9:
+                await _bot(token, "forwardMessage", {"chat_id": uid, "from_chat_id": namero_bots, "message_id": mnamero_id})
+                await asyncio.sleep(0.05)
+            await _bot(token, "sendMessage", {
+                "chat_id": admin,
+                "text": f"• تم الاذاعة بنجاح 🎉\n\n• القنوات والكروبات الذين شاهدو الاذاعة: {x9}",
+            })
 
     # ═════════════════════════════════════════════════════════════════════
     # REPLIES SECTION (rdod)

@@ -94,7 +94,8 @@ def _startadmin_kb(zune: dict) -> str:
          {"text": "الادمنيه", "callback_data": "admin"}],
         [{"text": "الاذاعه", "callback_data": "tonum"},
          {"text": "الاحصائيات", "callback_data": "countall"}],
-        [{"text": "• لوحة تحكم البوت •", "callback_data": "toch"}],
+        [{"text": "📋 الكروبات المرتبطة", "callback_data": "listgroup"},
+         {"text": "⚙ معلومات البوت", "callback_data": "toch"}],
     ]}
     return json.dumps(kb)
 
@@ -982,7 +983,7 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
         zune["data"] = "un"
         write_json(zune_path, zune)
 
-    if saleh_text and zune.get("data") == "un":
+    if saleh_text and zune.get("data") == "un" and is_super_admin(namero_bots):
         await _bot(token, "sendMessage", {
             "chat_id": nameroch,
             "text": f"تم الغاء حظره {saleh_text}",
@@ -1992,41 +1993,96 @@ async def handle_saleh(token: str, bot_dir: str, update: dict, admin_id: str, ds
             write_json(zune_path, zune)
 
     # ═════════════════════════════════════════════════════════════════════
-    # BOT CONTROLLER PANEL (toch)
+    # BOT INFO PANEL (toch)
     # ═════════════════════════════════════════════════════════════════════
 
-    toch_kb = json.dumps({"inline_keyboard": [
-        [{"text": "جلب نسخه 🗳", "callback_data": "geet"}],
-        [{"text": "رجوع", "callback_data": "back"}],
-    ]})
+    if s_p_p1 in ("toch", "ت"):
+        if is_super_admin(namero_bots2):
+            idbot_val = os.path.basename(bot_dir)
+            groups_count = len(id_group)
+            channels_count = len(id_ch)
+            s_all_cur = len(file_lines(alluser_path))
+            await _bot(token, "editMessageText", {
+                "chat_id": nameroch2,
+                "message_id": mnamero_id2,
+                "text": (
+                    "*⚙ معلومات البوت:*\n\n"
+                    f"• معرف البوت: `{idbot_val}`\n"
+                    f"• عدد المستخدمين: {s_all_cur}\n"
+                    f"• عدد الكروبات المرتبطة: {groups_count}\n"
+                    f"• عدد القنوات المرتبطة: {channels_count}\n\n"
+                    "📌 *لربط البوت بكروب:*\n"
+                    "أضف البوت كأدمن في الكروب ثم أرسل أي رسالة في الكروب."
+                ),
+                "parse_mode": "MarkDown",
+                "disable_web_page_preview": True,
+                "reply_markup": json.dumps({"inline_keyboard": [
+                    [{"text": "📋 الكروبات المرتبطة", "callback_data": "listgroup"}],
+                    [{"text": "رجوع", "callback_data": "back"}],
+                ]}),
+            })
 
-    if s_p_p1 == "ت" and toch_kb:
-        await _bot(token, "editMessageText", {
-            "chat_id": nameroch2,
-            "message_id": mnamero_id2,
-            "text": (
-                "*⚙: اهلا بك عزيزي \n\n"
-                "في لوحه الاوامر ألخاصة لبوت الزخرفة\n"
-                "*"
-            ),
-            "parse_mode": "MarkDown",
-            "disable_web_page_preview": True,
-            "reply_markup": toch_kb,
-        })
+    # ═════════════════════════════════════════════════════════════════════
+    # GROUPS MANAGEMENT PANEL (listgroup)
+    # ═════════════════════════════════════════════════════════════════════
 
-    if s_p_p1 == "toch" and toch_kb:
-        await _bot(token, "editMessageText", {
-            "chat_id": nameroch2,
-            "message_id": mnamero_id2,
-            "text": (
-                "*⚙: اهلا بك عزيزي \n\n"
-                "في لوحه الاوامر ألخاصة لبوت الزخرفة\n"
-                "*"
-            ),
-            "parse_mode": "MarkDown",
-            "disable_web_page_preview": True,
-            "reply_markup": toch_kb,
-        })
+    if s_p_p1 == "listgroup":
+        if is_super_admin(namero_bots2):
+            groups_list = zune.get("idgroup") or []
+            if groups_list:
+                keyboard = {"inline_keyboard": []}
+                for grp_id in groups_list:
+                    keyboard["inline_keyboard"].append([
+                        {"text": str(grp_id), "callback_data": "0"},
+                        {"text": "🗑 حذف", "callback_data": "dllgrp@" + str(grp_id)},
+                    ])
+                keyboard["inline_keyboard"].append([{"text": "• رجوع •", "callback_data": "toch"}])
+                await _bot(token, "editMessageText", {
+                    "chat_id": nameroch2,
+                    "message_id": mnamero_id2,
+                    "text": (
+                        "📋 *قائمة الكروبات المرتبطة بالبوت:*\n\n"
+                        "- يمكنك حذف أي كروب من القائمة.\n"
+                        "- لإضافة كروب جديد: أضف البوت كأدمن في الكروب وأرسل له رسالة."
+                    ),
+                    "parse_mode": "MarkDown",
+                    "reply_markup": json.dumps(keyboard),
+                })
+            else:
+                await _bot(token, "editMessageText", {
+                    "chat_id": nameroch2,
+                    "message_id": mnamero_id2,
+                    "text": (
+                        "📋 *قائمة الكروبات المرتبطة:*\n\n"
+                        "• لا توجد كروبات مرتبطة حالياً.\n\n"
+                        "📌 *لإضافة كروب:*\n"
+                        "1. أضف البوت كأدمن في الكروب\n"
+                        "2. أرسل أي رسالة في الكروب\n"
+                        "3. سيتم إضافة الكروب تلقائياً"
+                    ),
+                    "parse_mode": "MarkDown",
+                    "reply_markup": json.dumps({"inline_keyboard": [
+                        [{"text": "• رجوع •", "callback_data": "toch"}],
+                    ]}),
+                })
+
+    # ── dllgrp@: delete group ─────────────────────────────────────────────
+    if s_p_p1.startswith("dllgrp@"):
+        grp_to_del = s_p_p1.replace("dllgrp@", "").strip()
+        if grp_to_del and is_super_admin(namero_bots2):
+            groups_list2 = zune.get("idgroup") or []
+            if grp_to_del in groups_list2:
+                groups_list2.remove(grp_to_del)
+            zune["idgroup"] = groups_list2
+            write_json(zune_path, zune)
+            await _bot(token, "editMessageText", {
+                "chat_id": nameroch2,
+                "message_id": mnamero_id2,
+                "text": "✅ تم حذف الكروب من القائمة",
+                "reply_markup": json.dumps({"inline_keyboard": [
+                    [{"text": "• رجوع •", "callback_data": "listgroup"}],
+                ]}),
+            })
 
     # ═════════════════════════════════════════════════════════════════════
     # FACTORY-LEVEL st_ch_bots MANDATORY SUBSCRIPTION CHECK (end of file)

@@ -1890,11 +1890,48 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             write_file(f"from_id/{from_id}/amr", "")
             file_id_doc = document.get("file_id")
             saleh_id = get_saleh_admin()
-            await bot_call(token, "sendDocument", {"chat_id": saleh_id, "document": file_id_doc})
-            await bot_call(token, "sendMessage", {"chat_id": saleh_id, "text": f"*👾 طلب ارسال ملف جديد*\nمعلومات المرسل 🌐 \nالاسم : *{name}*\nالايدي : {from_id}\nالمعرف : {user}\n", "parse_mode": "MarkDown", "disable_web_page_preview": "true"})
-            await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": "*• تم إرسال الملف إلى المشرفين سيتم فحصهة وسيتم وضع اسمك في البوتات 🔰*\n", "parse_mode": "MarkDown"})
+            send_ok = False
+            try:
+                r1 = await bot_call(token, "sendDocument", {"chat_id": saleh_id, "document": file_id_doc})
+                if r1.get("ok"):
+                    await bot_call(token, "sendMessage", {
+                        "chat_id": saleh_id,
+                        "text": (
+                            f"*👾 طلب ارسال ملف جديد*\n"
+                            f"معلومات المرسل 🌐\n"
+                            f"الاسم: *{name}*\n"
+                            f"الايدي: {from_id}\n"
+                            f"المعرف: @{user}\n"
+                        ),
+                        "parse_mode": "MarkDown",
+                        "disable_web_page_preview": True,
+                    })
+                    send_ok = True
+            except Exception:
+                send_ok = False
+            if send_ok:
+                await bot_call(token, "sendMessage", {
+                    "chat_id": chat_id,
+                    "text": "✅ *تم إرسال الملف إلى المشرفين*\nسيتم مراجعته وسيتم وضع اسمك في البوتات 🔰",
+                    "parse_mode": "MarkDown",
+                })
+            else:
+                await bot_call(token, "sendMessage", {
+                    "chat_id": chat_id,
+                    "text": (
+                        "⚠️ *فشل إرسال الملف للمشرف*\n\n"
+                        "يُرجى إرسال الملف مباشرةً عبر:\n"
+                        "[@NameroBots](https://t.me/NameroBots)"
+                    ),
+                    "parse_mode": "MarkDown",
+                    "disable_web_page_preview": False,
+                })
         else:
-            await bot_call(token, "sendMessage", {"chat_id": chat_id, "text": " قم بإرسال الملفات فقط ", "reply_markup": json.dumps({"inline_keyboard": [[{"text": "• رجوع • ", "callback_data": "freebot"}]]})})
+            await bot_call(token, "sendMessage", {
+                "chat_id": chat_id,
+                "text": "⚠️ قم بإرسال ملف فقط (document)",
+                "reply_markup": json.dumps({"inline_keyboard": [[{"text": "• رجوع • ", "callback_data": "freebot"}]]}),
+            })
         return {"ok": True}
 
     if text == "/id":

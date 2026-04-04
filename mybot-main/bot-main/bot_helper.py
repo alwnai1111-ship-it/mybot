@@ -107,137 +107,92 @@ async def bot_get(token: str, method: str, params: dict = None, timeout: float =
 
 
 # ============================================================================
-# نظام الملفات - أدوات القراءة والكتابة
+# نظام قاعدة البيانات - جميع العمليات مباشرة إلى SQLite بدون ملفات
 # ============================================================================
 
 _FS_LOCK = threading.RLock()
 
 
 def ensure_dir(path: str) -> None:
-    """إنشاء المجلد إذا لم يكن موجوداً"""
-    try:
-        if path and not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
-    except Exception:
-        pass
+    """no-op: قاعدة البيانات لا تحتاج مجلدات"""
+    pass
 
 
 def read_file(path: str, default: str = "") -> str:
-    """قراءة المحتوى من قاعدة البيانات مع fallback للملفات الفعلية"""
+    """قراءة نص مباشرة من قاعدة البيانات"""
+    from db_config import db_read
     try:
-        from db_config import db_read
-        result = db_read(path, None)
-        if result is not None:
-            return result
+        return db_read(path, default)
     except Exception as e:
-        print(f"[Helper] DB Error reading '{path}': {e}")
-    
-    # Fallback: محاولة قراءة من الملف الفعلي
-    try:
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                # حفظ في قاعدة البيانات للمرة القادمة
-                try:
-                    from db_config import db_write
-                    db_write(path, content)
-                except:
-                    pass
-                return content
-    except Exception as e:
-        print(f"[Helper] File Error reading '{path}': {e}")
-    
-    return default
+        print(f"[DB] خطأ في قراءة '{path}': {e}")
+        return default
 
 
 def write_file(path: str, content: str) -> None:
-    """كتابة المحتوى في قاعدة البيانات (بديل الملفات النصية)"""
+    """كتابة نص مباشرة في قاعدة البيانات"""
+    from db_config import db_write
     try:
-        from db_config import db_write
         db_write(path, content)
     except Exception as e:
-        print(f"[Helper] Error writing '{path}': {e}")
+        print(f"[DB] خطأ في كتابة '{path}': {e}")
 
 
 def append_file(path: str, content: str) -> None:
-    """إضافة محتوى في قاعدة البيانات"""
+    """إضافة نص مباشرة في قاعدة البيانات"""
+    from db_config import db_append
     try:
-        from db_config import db_append
         db_append(path, content)
     except Exception as e:
-        print(f"[Helper] Error appending to '{path}': {e}")
+        print(f"[DB] خطأ في الإضافة إلى '{path}': {e}")
 
 
 def read_json(path: str, default: dict = None) -> dict:
-    """قراءة بيانات JSON من قاعدة البيانات مع fallback للملفات الفعلية"""
+    """قراءة JSON مباشرة من قاعدة البيانات"""
+    from db_config import db_read_json
     if default is None:
         default = {}
-    
     try:
-        from db_config import db_read_json
-        result = db_read_json(path, None)
-        if result is not None:
-            return result
+        return db_read_json(path, default)
     except Exception as e:
-        print(f"[Helper] DB Error reading JSON '{path}': {e}")
-    
-    # Fallback: محاولة قراءة من الملف الفعلي
-    try:
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                content = json.load(f)
-                # حفظ في قاعدة البيانات للمرة القادمة
-                try:
-                    from db_config import db_write_json
-                    db_write_json(path, content)
-                except:
-                    pass
-                return content
-    except Exception as e:
-        print(f"[Helper] File Error reading JSON '{path}': {e}")
-    
-    return default
+        print(f"[DB] خطأ في قراءة JSON '{path}': {e}")
+        return default
+
 
 def write_json(path: str, data: dict) -> None:
-    """كتابة بيانات JSON في قاعدة البيانات (بديل ملفات JSON)"""
+    """كتابة JSON مباشرة في قاعدة البيانات"""
+    from db_config import db_write_json
     try:
-        from db_config import db_write_json
         db_write_json(path, data)
     except Exception as e:
-        print(f"[Helper] Error writing JSON '{path}': {e}")
+        print(f"[DB] خطأ في كتابة JSON '{path}': {e}")
 
 
 def file_lines(path: str) -> list:
-    """قراءة أسطر من قاعدة البيانات (بديل الملفات النصية)"""
+    """قراءة أسطر مباشرة من قاعدة البيانات"""
+    from db_config import db_lines
     try:
-        from db_config import db_lines
         return db_lines(path)
     except Exception as e:
-        print(f"[Helper] Error reading lines from '{path}': {e}")
+        print(f"[DB] خطأ في قراءة أسطر '{path}': {e}")
         return []
 
 
 def file_exists(path: str) -> bool:
-    """التحقق من وجود البيانات في قاعدة البيانات أو الملف الفعلي"""
+    """التحقق من وجود البيانات في قاعدة البيانات فقط"""
+    from db_config import db_exists
     try:
-        from db_config import db_read
-        content = db_read(path, None)
-        if content is not None:
-            return True
+        return db_exists(path)
     except Exception:
-        pass
-    
-    # Fallback: التحقق من وجود الملف الفعلي
-    return os.path.exists(path)
+        return False
 
 
 def delete_file(path: str) -> None:
     """حذف المحتوى من قاعدة البيانات"""
+    from db_config import db_delete
     try:
-        from db_config import db_delete
         db_delete(path)
     except Exception as e:
-        print(f"[Helper] Error deleting '{path}': {e}")
+        print(f"[DB] خطأ في حذف '{path}': {e}")
 
 
 def get_chat_member_status(response_text: str) -> str:

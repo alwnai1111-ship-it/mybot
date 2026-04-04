@@ -334,6 +334,24 @@ def db_delete(file_path: str) -> bool:
         return False
 
 
+def db_exists(file_path: str) -> bool:
+    """التحقق من وجود مفتاح في قاعدة البيانات"""
+    try:
+        with _lock:
+            conn = _get_conn()
+            try:
+                row = conn.execute(
+                    "SELECT 1 FROM content_storage WHERE content_key = ?",
+                    (file_path,)
+                ).fetchone()
+                return row is not None
+            finally:
+                conn.close()
+    except Exception as e:
+        print(f"[DB] Error checking existence of '{file_path}': {e}")
+        return False
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # دوال تخزين JSON (بديل read_json/write_json)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -651,6 +669,92 @@ def db_is_media_blocked(bot_id: int, media_type: str) -> bool:
     except Exception as e:
         print(f"[DB] Error checking media block: {e}")
         return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# حذف بيانات البوت كاملاً من قاعدة البيانات
+# ═══════════════════════════════════════════════════════════════════════════
+
+def db_delete_bot_data(bot_dir: str) -> int:
+    """حذف جميع بيانات البوت من content_storage و bot_messages"""
+    deleted = 0
+    try:
+        prefix = bot_dir.rstrip("/") + "/"
+        with _lock:
+            conn = _get_conn()
+            try:
+                cur = conn.execute(
+                    "DELETE FROM content_storage WHERE content_key = ? OR content_key LIKE ?",
+                    (bot_dir, prefix + "%")
+                )
+                deleted += cur.rowcount
+                cur2 = conn.execute(
+                    "DELETE FROM bot_messages WHERE bot_id = ?",
+                    (os.path.basename(bot_dir),)
+                )
+                deleted += cur2.rowcount
+                conn.commit()
+            finally:
+                conn.close()
+    except Exception as e:
+        print(f"[DB] Error deleting bot data '{bot_dir}': {e}")
+    return deleted
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# دوال رسائل المحادثات (بديل ملفات messages/)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def db_save_message(bot_id: str, from_id: str, from_name: str, from_user: str,
+                    to_id: str, to_user: str, text: str, message_id: int,
+                    direction: str = "user->admin") -> bool:
+    """حفظ رسالة محادثة مباشرة في قاعدة البيانات"""
+    try:
+        with _lock:
+            conn = _get_conn()
+            try:
+                conn.execute(
+                    "INSERT INTO bot_messages "
+                    "(bot_id, from_id, from_name, from_user, to_id, to_user, "
+                    " message_text, message_id, direction) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (str(bot_id), str(from_id), from_name or "", from_user or "",
+                     str(to_id), to_user or "", str(text)[:500],
+                     int(message_id) if message_id else 0, direction)
+                )
+                conn.commit()
+                return True
+            finally:
+                conn.close()
+    except Exception as e:
+        print(f"[DB] Error saving message: {e}")
+        return False
+
+
+def db_get_messages(bot_id: str, from_id: str = None, limit: int = 100) -> List[Dict]:
+    """جلب رسائل البوت (اختياري: تصفية بـ from_id)"""
+    try:
+        with _lock:
+            conn = _get_conn()
+            try:
+                if from_id:
+                    rows = conn.execute(
+                        "SELECT * FROM bot_messages WHERE bot_id = ? AND from_id = ? "
+                        "ORDER BY timestamp DESC LIMIT ?",
+                        (str(bot_id), str(from_id), limit)
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        "SELECT * FROM bot_messages WHERE bot_id = ? "
+                        "ORDER BY timestamp DESC LIMIT ?",
+                        (str(bot_id), limit)
+                    ).fetchall()
+                return [dict(row) for row in rows]
+            finally:
+                conn.close()
+    except Exception as e:
+        print(f"[DB] Error getting messages: {e}")
+        return []
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -166,82 +166,16 @@ def _wj(path: str, data) -> None:
     write_json(path, data)
 
 
-def _save_message(bot_dir: str, from_id: str, from_name: str, from_user: str, 
-                  to_id: str, to_user: str, text: str, message_id: int, direction: str = "user→admin") -> None:
-    """حفظ الرسالة في مجلد منفصل خاص للرسائل فقط
-    direction: "user→admin" أو "admin→user"
-    """
+def _save_message(bot_dir: str, from_id: str, from_name: str, from_user: str,
+                  to_id: str, to_user: str, text: str, message_id: int, direction: str = "user->admin") -> None:
+    """حفظ الرسالة مباشرة في قاعدة البيانات SQLite"""
+    from db_config import db_save_message
+    bot_id = os.path.basename(bot_dir)
     try:
-        import json
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # المسار المطلق: bot_dir = "botmak/8199502550" → الجذر = mybot-main
-        # نصعد مستويين من bot_dir للحصول على mybot-main
-        bot_id = os.path.basename(bot_dir)
-        project_root = os.path.abspath(os.path.join(os.getcwd(), ".."))
-        messages_root = os.path.join(project_root, "messages")
-        bot_messages_dir = os.path.join(messages_root, bot_id)
-        ensure_dir(bot_messages_dir)
-        
-        # حفظ الرسالة في ملف يومي منفصل
-        date_str = datetime.now().strftime("%Y-%m-%d")
-        messages_file = os.path.join(bot_messages_dir, f"{date_str}.json")
-        
-        # قراءة الرسائل الموجودة
-        existing = []
-        if os.path.exists(messages_file):
-            try:
-                with open(messages_file, 'r', encoding='utf-8') as f:
-                    existing = json.load(f) if f else []
-            except:
-                existing = []
-        
-        # إنشاء سجل الرسالة
-        message_record = {
-            "timestamp": timestamp,
-            "message_id": message_id,
-            "direction": direction,
-            "from": {
-                "id": str(from_id),
-                "name": from_name,
-                "username": f"@{from_user}" if from_user else "بدون معرّف"
-            },
-            "to": {
-                "id": str(to_id),
-                "username": f"@{to_user}" if to_user else "بدون معرّف"
-            },
-            "text": text[:500]
-        }
-        
-        existing.append(message_record)
-        
-        # كتابة الملف الفعلي
-        with open(messages_file, 'w', encoding='utf-8') as f:
-            json.dump(existing, f, ensure_ascii=False, indent=2)
-        
-        # أيضاً حفظ في ملف منفصل لكل محادثة
-        conversations_dir = os.path.join(bot_messages_dir, "conversations")
-        ensure_dir(conversations_dir)
-        user_file = os.path.join(conversations_dir, f"{from_id}_{from_user or 'nouser'}.json")
-        
-        user_messages = []
-        if os.path.exists(user_file):
-            try:
-                with open(user_file, 'r', encoding='utf-8') as f:
-                    user_messages = json.load(f) if f else []
-            except:
-                user_messages = []
-        
-        user_messages.append(message_record)
-        
-        with open(user_file, 'w', encoding='utf-8') as f:
-            json.dump(user_messages, f, ensure_ascii=False, indent=2)
-        
-        print(f"[💾] تم حفظ الرسالة في: {messages_file}")
-        
+        db_save_message(bot_id, from_id, from_name, from_user,
+                        to_id, to_user, text, message_id, direction)
     except Exception as e:
-        print(f"[❌] خطأ في حفظ الرسالة: {e}")
-
+        print(f"[DB] خطأ في حفظ الرسالة: {e}")
 
 def _ri(path: str, default: int = 0) -> int:
     """Safely read integer from file with validation."""

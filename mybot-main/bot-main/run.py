@@ -5,7 +5,6 @@
 بدون أي Webhook
 """
 
-import json
 import os
 import sys
 import asyncio
@@ -15,14 +14,8 @@ import re
 # تأكد من المسار الصحيح - انتقل إلى مجلد bot-main
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# ثابت: مجلد جذر المشروع (mybot-main) للاستخدام في حفظ الرسائل
-PROJECT_ROOT = os.path.dirname(os.getcwd())
-
 import config
-from bot_helper import (
-    bot_get, read_file, write_file, file_exists,
-    file_lines, ensure_dir, write_json, read_json, append_file
-)
+from bot_helper import bot_get, file_lines, file_exists, read_file, write_file
 from db_config import get_config, set_config
 from maker_handler import _run_polling as run_maker_polling
 from saleh_handler import _run_polling as run_saleh_polling
@@ -135,18 +128,115 @@ async def start_all_created_bots():
     print(f"[Boot] ✅ بدأ {started}/{len(bots)} بوت")
 
 
-def _init_files():
-    """تهيئة ملفات البيانات الأساسية + قاعدة البيانات"""
-    ensure_dir("NaMero")
-    ensure_dir("botmak")
-    ensure_dir("from_id")
-    ensure_dir("user")
-    ensure_dir("NAMERO")
-    ensure_dir("data")
-    ensure_dir("db")
+def _migrate_physical_files_to_db():
+    """
+    ترحيل تلقائي لمرة واحدة: قراءة الملفات الفيزيائية الموجودة وحفظها في قاعدة البيانات.
+    بعد الترحيل لا يُلمس أي ملف فيزيائي أبداً.
+    """
+    from db_config import db_write, db_write_json, db_lines, db_exists
+    import os as _os
 
-    if not file_exists("NaMeroData"):
-        write_json("NaMeroData", {
+    if get_config("files_migrated_v1") == "true":
+        return
+
+    migrated = 0
+
+    def _migrate_text(path: str):
+        nonlocal migrated
+        if _os.path.isfile(path) and not db_exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                    db_write(path, f.read())
+                migrated += 1
+            except Exception as e:
+                print(f"[Migrate] خطأ في ترحيل '{path}': {e}")
+
+    def _migrate_json(path: str):
+        nonlocal migrated
+        if _os.path.isfile(path) and not db_exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                    import json as _json
+                    data = _json.load(f)
+                    db_write_json(path, data)
+                migrated += 1
+            except Exception as e:
+                print(f"[Migrate] خطأ في ترحيل JSON '{path}': {e}")
+
+    # ─── ملفات الجذر ──────────────────────────────────────────────────
+    for txt_path in ("NaMero/member", "NaMero/ban", "infoidbots", "botfreeid",
+                     "namero_admins", "base_url"):
+        _migrate_text(txt_path)
+
+    for json_path in ("NaMeroData", "botmak/NAMERO", "code", "datatime"):
+        _migrate_json(json_path)
+
+    # ─── ملفات كل بوت مصنوع ──────────────────────────────────────────
+    botmak_root = "botmak"
+    if _os.path.isdir(botmak_root):
+        for bot_id in _os.listdir(botmak_root):
+            bot_dir = _os.path.join(botmak_root, bot_id)
+            if not _os.path.isdir(bot_dir):
+                continue
+
+            # zune (الإعدادات الرئيسية للبوت)
+            _migrate_json(_os.path.join(bot_dir, "zune"))
+
+            # ملفات نصية داخل مجلد البوت
+            for txt_file in ("token", "admin", "allUser", "sudo", "setting",
+                             "message", "countinfo", "datalogs"):
+                _migrate_text(_os.path.join(bot_dir, txt_file))
+
+            # NaMero/member و NaMero/ban الخاصة بالبوت
+            namero_dir = _os.path.join(bot_dir, "NaMero")
+            if _os.path.isdir(namero_dir):
+                _migrate_text(_os.path.join(namero_dir, "member"))
+                _migrate_text(_os.path.join(namero_dir, "ban"))
+
+            # count/
+            count_dir = _os.path.join(bot_dir, "count")
+            if _os.path.isdir(count_dir):
+                for root, dirs, files in _os.walk(count_dir):
+                    for fname in files:
+                        _migrate_text(_os.path.join(root, fname))
+
+    set_config("files_migrated_v1", "true")
+    print(f"[Migrate] ✅ تم ترحيل {migrated} ملف إلى قاعدة البيانات")
+
+
+def _init_db():
+    """تهيئة قاعدة البيانات بالقيم الافتراضية — بدون أي ملفات فيزيائية"""
+    # فقط نتأكد أن مجلد db موجود للـ SQLite نفسه
+    import os as _os
+    _os.makedirs("db", exist_ok=True)
+
+    # القيم الافتراضية في system_config
+    defaults = {
+        "saleh_admin": str(config.DEVELOPER_ID),
+        "userbot":     getattr(config, "USER_BOT_NAMERO", ""),
+        "xx":          getattr(config, "XX", config.DEVELOPER_USERNAME),
+        "xxx":         getattr(config, "XXX", ""),
+        "base_url":    getattr(config, "BASE_URL", ""),
+    }
+    for key, val in defaults.items():
+        if not get_config(key):
+            set_config(key, val)
+            print(f"[DB] ✅ تم تعيين {key}: {val[:20] if val else ''}")
+
+    # القيم الافتراضية في content_storage (بديل الملفات النصية)
+    from db_config import db_exists, db_write, db_write_json
+    text_defaults = {
+        "NaMero/member": "",
+        "NaMero/ban":    "",
+        "infoidbots":    "",
+        "botfreeid":     "",
+    }
+    for path, val in text_defaults.items():
+        if not db_exists(path):
+            db_write(path, val)
+
+    json_defaults = {
+        "NaMeroData": {
             "info": {
                 "update": "✅",
                 "propots": "مجانية",
@@ -157,51 +247,21 @@ def _init_files():
                 "updatechannel": "Voltees",
                 "klish_sil": "• عذراً عزيزي عليك الاشتراك في قناة المصنع أولاً 🪢\n\n🌴 اشترك ثم أرسل /start"
             }
-        })
-
-    if not file_exists("botmak/NAMERO"):
-        write_json("botmak/NAMERO", {
-            "info": {"st_ch_bots": "❌", "user_bot": "Voltees"}
-        })
-
-    for path in ("NaMero/member", "NaMero/ban", "infoidbots", "botfreeid"):
-        if not file_exists(path):
-            write_file(path, "")
-
-    for path in ("code", "datatime"):
-        if not file_exists(path):
-            write_json(path, {})
-
-    # ── تهيئة قاعدة البيانات بالإعدادات الافتراضية إذا لم تكن موجودة ──
-    _init_db_defaults()
-
-
-def _init_db_defaults():
-    """تعيين القيم الافتراضية في قاعدة البيانات (بديل الملفات النصية المحذوفة)"""
-    # saleh_admin: ID المشرف العام
-    if not get_config("saleh_admin"):
-        set_config("saleh_admin", str(config.DEVELOPER_ID))
-        print(f"[DB] ✅ تم تعيين saleh_admin: {config.DEVELOPER_ID}")
-
-    # userbot: يوزرنيم بوت الصانع (يُحدَّث بعد getMe الناجح)
-    if not get_config("userbot"):
-        set_config("userbot", getattr(config, "USER_BOT_NAMERO", ""))
-
-    # xx: اسم المطور
-    if not get_config("xx"):
-        set_config("xx", getattr(config, "XX", config.DEVELOPER_USERNAME))
-
-    # xxx: رابط شرح التوكن (اختياري)
-    if not get_config("xxx"):
-        set_config("xxx", getattr(config, "XXX", ""))
-
-    # base_url: غير مستخدم في polling لكن محفوظ للتوافق
-    if not get_config("base_url"):
-        set_config("base_url", getattr(config, "BASE_URL", ""))
+        },
+        "botmak/NAMERO": {"info": {"st_ch_bots": "❌", "user_bot": "Voltees"}},
+        "code":          {},
+        "datatime":      {},
+    }
+    for path, val in json_defaults.items():
+        if not db_exists(path):
+            db_write_json(path, val)
 
 
 async def main():
-    _init_files()
+    # 1. إنشاء مجلد DB وتهيئة قاعدة البيانات بالقيم الافتراضية
+    _init_db()
+    # 2. ترحيل الملفات الفيزيائية القديمة لمرة واحدة فقط
+    _migrate_physical_files_to_db()
 
     print("=" * 55)
     print("  NaMero Bot Factory — Polling Mode")

@@ -1844,9 +1844,9 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
             infoidbots_content = read_file("infoidbots").replace(f"{idbots_del}\n", "")
             write_file("infoidbots", infoidbots_content)
 
-            # Delete bot directory
-            if os.path.isdir(f"botmak/{idbots_del}"):
-                remove_dir(f"botmak/{idbots_del}")
+            # حذف بيانات البوت من قاعدة البيانات
+            from db_config import db_delete_bot_data
+            db_delete_bot_data(f"botmak/{idbots_del}")
 
             # Delete NAMERO config file
             delete_file(f"NAMERO/{idbots_del}.py")

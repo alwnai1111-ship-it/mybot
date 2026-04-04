@@ -150,7 +150,26 @@ def _init_database():
                     FOREIGN KEY(bot_id) REFERENCES bot_instances(bot_id)
                 )
             ''')
-            
+
+            # جدول رسائل المحادثات (بديل ملفات messages/)
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS bot_messages (
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    bot_id       TEXT NOT NULL,
+                    from_id      TEXT NOT NULL,
+                    from_name    TEXT DEFAULT '',
+                    from_user    TEXT DEFAULT '',
+                    to_id        TEXT DEFAULT '',
+                    to_user      TEXT DEFAULT '',
+                    message_text TEXT DEFAULT '',
+                    message_id   INTEGER DEFAULT 0,
+                    direction    TEXT DEFAULT 'user->admin',
+                    timestamp    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_bot_msg ON bot_messages(bot_id, timestamp)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_bot_msg_from ON bot_messages(bot_id, from_id)')
+
             conn.commit()
         finally:
             conn.close()

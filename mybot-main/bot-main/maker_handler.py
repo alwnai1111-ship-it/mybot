@@ -1565,7 +1565,7 @@ async def handle_maker(body: bytes, request_host: str = None) -> dict:
 
                 # Polling فقط - حذف أي Webhook موجود على البوت الفرعي
                 try:
-                    await bot_get(text.strip(), "deleteWebhook", {"drop_pending_updates": "false"})
+                    await bot_get(text.strip(), "deleteWebhook", {"drop_pending_updates": True})
                     print(f"[Maker] ✅ تم حذف Webhook من البوت {idbot}")
                 except Exception as e:
                     print(f"[Maker] ⚠️ deleteWebhook للبوت {idbot}: {e}")

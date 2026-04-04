@@ -1237,19 +1237,21 @@ async def handle_namero4(
     # وقد حفظنا معرف المستخدم في message/{reply_id}
     repp_id       = reply_id if reply_id else 0  # ← تم التصحيح
     msg_file_raw  = _rf(p("message", f"{repp_id}")) if reply_id else ""
-    print(f"[DEBUG] البحث عن معرف المستخدم: repp_id={repp_id}, msg_file_raw='{msg_file_raw}'")
     msg_parts     = msg_file_raw.split("=") if msg_file_raw else []
     n_id          = msg_parts[1] if len(msg_parts) > 1 else None
-    print(f"[DEBUG] msg_parts={msg_parts}, n_id={n_id}")
 
     msrd      = _rf(p("data", "msrd"))
-    c_photo   = _rf(p("data", "photo"))
-    c_video   = _rf(p("data", "video"))
-    c_document= _rf(p("data", "document"))
-    c_sticker = _rf(p("data", "sticker"))
-    c_voice   = _rf(p("data", "voice"))
-    c_audio   = _rf(p("data", "audio"))
-    c_forward = _rf(p("data", "forward"))   # PHP had a bug using audio here; using correct forward
+
+    # ── اقرأ حالة قيود الوسائط من إعدادات البوت (setting JSON) ──────────
+    # ✅ = محجوب (restriction active)  |  ❌ أو "" = مسموح (default)
+    _twasl = setting.get("twasl", {})
+    c_photo    = _twasl.get("modetext1", "")
+    c_audio    = _twasl.get("modetext2", "")
+    c_document = _twasl.get("modetext3", "")
+    c_sticker  = _twasl.get("modetext4", "")
+    c_video    = _twasl.get("modetext5", "")
+    c_voice    = _twasl.get("modetext6", "")
+    c_forward  = _twasl.get("modetext8", "")
 
     # ══════════════════════════════════════════════════════════════════════
     # Ban/Unban user from message button

@@ -138,10 +138,7 @@ def _clear_cache():
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _rf(path: str, default: str = "") -> str:
-    result = read_file(path, default).strip()
-    if "msrd" in path:
-        print(f"[DEBUG _rf] قراءة {path} = '{result[:50] if result else 'فارغ'}'")
-    return result
+    return read_file(path, default).strip()
 
 
 def _wf(path: str, content: str) -> None:
@@ -156,10 +153,6 @@ def _rj(path: str, default=None):
     if default is None:
         default = {}
     return read_json(path, default)
-
-
-def _wj(path: str, data) -> None:
-    write_json(path, data)
 
 
 def _wj(path: str, data) -> None:
@@ -636,11 +629,6 @@ async def handle_namero4(
     if not admin or not str(admin).isdigit():
         print(f"⚠️ تحذير: admin غير محدد بشكل صحيح في {bot_dir}")
     
-    # Debug: طباعة المعلومات الأساسية
-    if text:
-        print(f"[DEBUG] رسالة من {from_id} ({name}): {text[:50]}")
-        print(f"[DEBUG] text.strip().lower() = '{text.strip().lower()}'")
-
     # include config developer/admins plus legacy construct
     sudo_ids = set()
     if admin and admin.isdigit():
@@ -1235,21 +1223,23 @@ async def handle_namero4(
     # ── resolve replied-to message metadata ───────────────────────────────
     # عند الرد، reply_id هو رقم الرسالة التي نرد عليها (الرسالة من البوت)
     # وقد حفظنا معرف المستخدم في message/{reply_id}
-    repp_id       = reply_id if reply_id else 0  # ← تم التصحيح
+    repp_id       = reply_id if reply_id else 0
     msg_file_raw  = _rf(p("message", f"{repp_id}")) if reply_id else ""
-    print(f"[DEBUG] البحث عن معرف المستخدم: repp_id={repp_id}, msg_file_raw='{msg_file_raw}'")
     msg_parts     = msg_file_raw.split("=") if msg_file_raw else []
     n_id          = msg_parts[1] if len(msg_parts) > 1 else None
-    print(f"[DEBUG] msg_parts={msg_parts}, n_id={n_id}")
 
     msrd      = _rf(p("data", "msrd"))
-    c_photo   = _rf(p("data", "photo"))
-    c_video   = _rf(p("data", "video"))
-    c_document= _rf(p("data", "document"))
-    c_sticker = _rf(p("data", "sticker"))
-    c_voice   = _rf(p("data", "voice"))
-    c_audio   = _rf(p("data", "audio"))
-    c_forward = _rf(p("data", "forward"))   # PHP had a bug using audio here; using correct forward
+
+    # ── اقرأ حالة قيود الوسائط من إعدادات البوت (setting JSON) ──────────
+    # ✅ = محجوب (restriction active)  |  ❌ أو "" = مسموح (default)
+    _twasl = setting.get("twasl", {})
+    c_photo    = _twasl.get("modetext1", "")
+    c_audio    = _twasl.get("modetext2", "")
+    c_document = _twasl.get("modetext3", "")
+    c_sticker  = _twasl.get("modetext4", "")
+    c_video    = _twasl.get("modetext5", "")
+    c_voice    = _twasl.get("modetext6", "")
+    c_forward  = _twasl.get("modetext8", "")
 
     # ══════════════════════════════════════════════════════════════════════
     # Ban/Unban user from message button
@@ -1315,8 +1305,6 @@ async def handle_namero4(
         and chat_type == "private"
         and str(from_id) != str(admin)
     ):
-        print(f"[DEBUG] معالجة رسالة من المستخدم: text='{text}'")
-        # تحقق من أن yppee محدد
         if not yppee or not str(yppee).isdigit():
             print(f"⚠️ تحذير: لا يمكن إرسال رسائل - yppee غير محدد بشكل صحيح")
             return
@@ -1366,35 +1354,19 @@ async def handle_namero4(
             })
             
             if response.get("ok"):
-                print(f"✅ تم إرسال الرسالة من {from_id} إلى المسؤول {yppee}")
-                # احفظ معرف الرسالة المُرسلة مع معرف المستخدم الأصلي
                 msg_id = response.get("result", {}).get("message_id", 0)
                 _wf(p("message", f"{msg_id}"), f"{chat_id}={name}={message_id}")
-                print(f"[DEBUG] تم حفظ معرف المستخدم في: message/{msg_id} = {chat_id}={name}={message_id}")
-                # حفظ الرسالة في نظام التخزين المنظم
-                admin_name = _rf(p("info")).split("\n")[0] if _rf(p("info")) else "Admin"
                 admin_user = _rf(p("info")).split("\n")[1] if len(_rf(p("info")).split("\n")) > 1 else ""
                 _save_message(bot_dir, str(from_id), name, user, str(yppee), admin_user, text, message_id, "user→admin")
-            else:
-                print(f"❌ خطأ في إرسال الرسالة: {response.get('description')}")
 
             # إرسال رسالة الرد فقط إذا عيّن المستخدم رسالة مخصصة
             if msrd:
-                print(f"[DEBUG] إرسال تأكيد: msrd='{msrd[:50]}'...")
-                ack_response = await bot_call(token, "sendMessage", {
+                await bot_call(token, "sendMessage", {
                     "chat_id":           chat_id,
                     "text":              f"{msrd}",
                     "reply_to_message_id": message_id,
                 })
-                if ack_response.get("ok"):
-                    print(f"✅ تم إرسال رسالة التأكيد للمستخدم {chat_id}")
-                    print(f"[DEBUG] العودة من معالجة الرسالة - لا تستمر المعالجة")
-                    return  # ← أضفت return هنا
-                else:
-                    print(f"❌ خطأ في رسالة التأكيد: {ack_response.get('description')}")
-            else:
-                print(f"[DEBUG] msrd فارغ، عدم إرسال تأكيد")
-                return  # ← أضفت return هنا أيضاً
+            return
         else:
             await bot_call(token, "sendMessage", {
                 "chat_id":           chat_id,
@@ -1412,32 +1384,22 @@ async def handle_namero4(
         and str(chat_id) == str(yppee)
         and n_id is not None
     ):
-        print(f"[DEBUG] محاولة الرد: reply_id={reply_id}, chat_id={chat_id}, yppee={yppee}, n_id={n_id}")
         if is_admin(from_id):
-            print(f"[DEBUG] المستخدم {from_id} هو صاحب البوت - محاولة الرد")
             user_chat_id = msg_parts[0] if msg_parts else ""
             user_name    = msg_parts[1] if len(msg_parts) > 1 else ""
             orig_msg_id  = msg_parts[2] if len(msg_parts) > 2 else ""
-            print(f"[DEBUG] تفاصيل الرد: user_chat_id={user_chat_id}, user_name={user_name}, orig_msg_id={orig_msg_id}")
             sent_msg_id  = 0
 
             if text:
-                print(f"[DEBUG] إرسال رسالة نصية للمستخدم {user_chat_id}: '{text[:50]}'")
                 get_r = await bot_call(token, "sendMessage", {
                     "chat_id":           user_chat_id,
                     "text":              text,
                     "reply_to_message_id": orig_msg_id,
                 })
                 sent_msg_id = get_r.get("result", {}).get("message_id", 0)
-                print(f"[DEBUG] النتيجة: ok={get_r.get('ok')}, message_id={sent_msg_id}")
-                
-                # حفظ رد المسؤول
                 if get_r.get("ok"):
-                    print(f"✅ تم إرسال الرد للمستخدم {user_chat_id}")
                     admin_user_name = (message.get("from", {}).get("username") or "").lower()
                     _save_message(bot_dir, str(from_id), name, admin_user_name, str(user_chat_id), user_name, text, sent_msg_id, "admin→user")
-                else:
-                    print(f"❌ خطأ في إرسال الرد: {get_r.get('description')}")
             else:
                 sens    = None
                 file_id = None
@@ -2317,8 +2279,11 @@ async def handle_namero4(
 # ═══════════════════════════════════════════════════════════════════════════
 
 _POLL_TIMEOUT = 30
-_RETRY_DELAY  = 0.5  # تقليل من 5 إلى 0.5 ثانية
+_RETRY_DELAY  = 0.5
 _MAX_ERRORS   = 10
+
+# مجموعة لمنع تشغيل polling مزدوج لنفس البوت
+_POLLING_BOTS: set = set()
 
 
 async def _delete_webhook(token: str, name: str = "NAMERO4") -> None:
@@ -2345,89 +2310,98 @@ async def _get_updates(token: str, offset: int) -> list:
 
 
 async def _run_polling(bot_dir: str) -> None:
-    token_path = os.path.join(bot_dir, "token")
-    admin_path = os.path.join(bot_dir, "admin")
+    global _POLLING_BOTS
 
-    if not file_exists(token_path):
-        print(f"[NAMERO4] ❌ لم يتم العثور على {token_path}")
+    abs_dir = os.path.abspath(bot_dir)
+
+    # ── منع تشغيل polling مزدوج لنفس البوت ──────────────────────────────
+    if abs_dir in _POLLING_BOTS:
+        print(f"[NAMERO4] ⚠️ polling يعمل بالفعل لـ {bot_dir} — تخطي")
         return
-    if not file_exists(admin_path):
-        print(f"[NAMERO4] ❌ لم يتم العثور على {admin_path}")
-        return
+    _POLLING_BOTS.add(abs_dir)
 
-    token = read_file(token_path).strip()
-    bot_name = os.path.basename(os.path.abspath(bot_dir))
+    try:
+        token_path = os.path.join(bot_dir, "token")
+        admin_path = os.path.join(bot_dir, "admin")
 
-    # load NaMerOset (zune) and makerinve (NameroF or ../KhAlEdJ)
-    zune_path    = os.path.join(bot_dir, "zune")
-    namero_path  = os.path.join(bot_dir, "NameroF")
-    khaled_path  = os.path.join(bot_dir, "..", "KhAlEdJ")
+        if not file_exists(token_path):
+            print(f"[NAMERO4] ❌ لم يتم العثور على {token_path}")
+            return
+        if not file_exists(admin_path):
+            print(f"[NAMERO4] ❌ لم يتم العثور على {admin_path}")
+            return
 
-    NaMerOset = read_json(zune_path, {})
-    makerinve = read_json(namero_path, {})
-    if not makerinve:
-        makerinve = read_json(khaled_path, {}).get("info", {})
+        token = read_file(token_path).strip()
+        bot_name = os.path.basename(abs_dir)
 
-    if not token:
-        print("[NAMERO4] ❌ token فارغ")
-        return
+        zune_path    = os.path.join(bot_dir, "zune")
+        namero_path  = os.path.join(bot_dir, "NameroF")
+        khaled_path  = os.path.join(bot_dir, "..", "KhAlEdJ")
 
-    # Setup logger
-    logger = _setup_logger(bot_dir)
+        NaMerOset = read_json(zune_path, {})
+        makerinve = read_json(namero_path, {})
+        if not makerinve:
+            makerinve = read_json(khaled_path, {}).get("info", {})
 
-    print("=" * 55)
-    print("  NaMero Robots — NAMERO4 Bot Polling")
-    print("  by @Voltees")
-    print(f"  المجلد : {bot_dir}")
-    print("=" * 55)
+        if not token:
+            print("[NAMERO4] ❌ token فارغ")
+            return
 
-    await _delete_webhook(token, bot_name)
+        logger = _setup_logger(bot_dir)
 
-    offset      = 0
-    offset_file = os.path.join(bot_dir, "offset")
-    
-    # استرجاع آخر offset محفوظ
-    if file_exists(offset_file):
-        try:
-            offset = int(read_file(offset_file).strip())
-        except:
-            offset = 0
-    
-    error_count = 0
+        print("=" * 55)
+        print("  NaMero Robots — NAMERO4 Bot Polling")
+        print("  by @Voltees")
+        print(f"  المجلد : {bot_dir}")
+        print("=" * 55)
 
-    while True:
-        try:
-            updates = await _get_updates(token, offset)
-            error_count = 0
+        await _delete_webhook(token, bot_name)
 
-            for update in updates:
-                offset = update["update_id"] + 1
-                try:
-                    await handle_namero4(
-                        update    = update,
-                        bot_dir   = bot_dir,
-                        token     = token,
-                        NaMerOset = NaMerOset,
-                        makerinve = makerinve,
-                    )
-                    # احفظ الـ offset بعد المعالجة الناجحة
-                    write_file(offset_file, str(offset))
-                except Exception as e:
-                    print(f"[{bot_name}] ❌ خطأ في التحديث {update.get('update_id')}: {e}")
+        offset_file = os.path.join(abs_dir, "offset")
+        offset = 0
 
-            # بدون sleep - معالجة فورية
+        # استرجاع آخر offset محفوظ
+        if file_exists(offset_file):
+            try:
+                offset = int(read_file(offset_file).strip())
+            except Exception:
+                offset = 0
 
-        except asyncio.CancelledError:
-            print(f"[{bot_name}] ⛔ تم إيقاف الـ Polling")
-            break
-        except Exception as e:
-            error_count += 1
-            print(f"[{bot_name}] ❌ خطأ ({error_count}/{_MAX_ERRORS}): {e}")
-            if error_count >= _MAX_ERRORS:
-                await asyncio.sleep(1)  # تقليل التأخير
+        error_count = 0
+
+        while True:
+            try:
+                updates = await _get_updates(token, offset)
                 error_count = 0
-            else:
-                await asyncio.sleep(0.5)  # تأخير أقصر
+
+                for update in updates:
+                    # ← دائماً تحديث الـ offset أولاً قبل المعالجة
+                    offset = update["update_id"] + 1
+                    write_file(offset_file, str(offset))
+                    try:
+                        await handle_namero4(
+                            update    = update,
+                            bot_dir   = bot_dir,
+                            token     = token,
+                            NaMerOset = NaMerOset,
+                            makerinve = makerinve,
+                        )
+                    except Exception as e:
+                        print(f"[{bot_name}] ❌ خطأ في التحديث {update.get('update_id')}: {e}")
+
+            except asyncio.CancelledError:
+                print(f"[{bot_name}] ⛔ تم إيقاف الـ Polling")
+                break
+            except Exception as e:
+                error_count += 1
+                print(f"[{bot_name}] ❌ خطأ ({error_count}/{_MAX_ERRORS}): {e}")
+                if error_count >= _MAX_ERRORS:
+                    await asyncio.sleep(1)
+                    error_count = 0
+                else:
+                    await asyncio.sleep(0.5)
+    finally:
+        _POLLING_BOTS.discard(abs_dir)
 
 
 async def _main() -> None:
